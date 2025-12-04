@@ -51,10 +51,11 @@ SS$date[SS$date == as_date("2025-04-03") & SS$tree %in% trees ] <-
 file_name <- "../../Data/LTS-Sugar_yield.xlsx"
 
 # Read mean annual sap sugar concentration data ----
-mSS <- read_excel(
+# N.B.: Does not contain data for sugar control trees!
+tmp <- read_excel(
     path = file_name, 
     sheet = "Tree Growth and Yield", 
-    range = "A2:CA91",
+    range = "A2:CQ91",
     na = "NA",
     col_names = c("t", "t_name", "o_ID", "ID", "i_DBH", "CPC", "CPS", "TH", "LC", 
                   "MCD", "CD", "CV", "ii_DBH", paste0("dbh_", as.character(2014:2025)),
@@ -65,17 +66,31 @@ mSS <- read_excel(
                   "EM2", paste0("tc_", as.character(2014:2017)), 
                   paste0("tc2_", as.character(2014:2017)), 
                   paste0("tc_", as.character(2022:2025)), "EM3", 
-                  paste0("ssc_", as.character(2014:2025))),
+                  paste0("ssc_", as.character(2014:2025)),
+                  "EM4", "EM5", "EM6", "EM7", 
+                  paste0("sy_", as.character(2014:2025))),
     col_types = c("numeric", rep("text", 2), rep("numeric", 2), 
-                  rep("text", 62), rep("numeric", 12))) %>% 
-  select(-c(2:3, 6:67)) 
+                  rep("text", 62), rep("numeric", 12), rep("text", 4), rep("numeric", 12)))
 
 # Convert the mean-annual sap sugar concentration data into long format ----
-mSS <- mSS %>% 
+mSS <- tmp %>% 
+  select(-c(2:3, 6:67, 80:95)) %>% 
   pivot_longer(cols = 4:15, 
                names_to = "year", 
                names_prefix = "ssc_", 
                values_to = "ssc") %>%
   mutate(year = as.numeric(year))
 
+# Convert the total annual syrup yield data into long format ----
+sy <- tmp %>% 
+  select(-c(2:3, 6:83)) %>% 
+  pivot_longer(cols = 4:15, 
+               names_to = "year", 
+               names_prefix = "sy_", 
+               values_to = "sy") %>%
+  mutate(year = as.numeric(year))
+
+# Calculate sap volume ----
+data <- left_join(mSS, sy, by = c("t", "ID", "i_DBH", "year")) %>%
+  mutate(vol_s = sy / ssc)
 #===============================================================================
